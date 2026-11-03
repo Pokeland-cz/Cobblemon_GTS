@@ -3,6 +3,7 @@ package org.pokesplash.gts.fabric;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import org.pokesplash.gts.Gts;
@@ -20,6 +21,11 @@ public class GtsFabric implements ModInitializer {
             Gts.server = t;
             Gts.reloadSensitive();
         });
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+            Gts.server = server;
+            Gts.startWeb();
+        });
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> Gts.stopWeb());
         ServerTickEvents.END_SERVER_TICK.register((e) -> {
             if (e.getTickCount() % Gts.ticksPerCheck == 0) {
                 Gts.listings.check();

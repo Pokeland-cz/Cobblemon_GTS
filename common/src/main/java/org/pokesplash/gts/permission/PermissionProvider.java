@@ -27,6 +27,7 @@ public abstract class PermissionProvider {
         permissions.put("remove", new GtsPermission("remove", "gts.moderation.remove", 2));
         permissions.put("itemdesc", new GtsPermission("itemdesc", "gts.admin.itemdesc", 3));
         permissions.put("version", new GtsPermission("version", "gts.admin.version", 3));
+        permissions.put("web", new GtsPermission("web", "gts.user.web", 0));
     }
 
     public HashMap<String, GtsPermission> getPermissions() {

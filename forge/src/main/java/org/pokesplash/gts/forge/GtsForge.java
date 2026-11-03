@@ -6,6 +6,8 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.server.permission.events.PermissionGatherEvent;
 import org.pokesplash.gts.Gts;
@@ -33,6 +35,17 @@ public class GtsForge {
     public void worldLoadEvent(LevelEvent.Load event) {
         Gts.server = event.getLevel().getServer();
         Gts.reloadSensitive();
+    }
+
+    @SubscribeEvent
+    public void serverStarted(ServerStartedEvent event) {
+        Gts.server = event.getServer();
+        Gts.startWeb();
+    }
+
+    @SubscribeEvent
+    public void serverStopping(ServerStoppingEvent event) {
+        Gts.stopWeb();
     }
 
     @SubscribeEvent
