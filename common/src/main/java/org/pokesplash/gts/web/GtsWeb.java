@@ -39,7 +39,7 @@ public final class GtsWeb {
 			});
 
 			server = HttpServer.create(new InetSocketAddress(config.getBindAddress(), config.getPort()), 64);
-			server.createContext("/api/", new ApiHandler(config, AUTH, new TradeBoard()));
+			server.createContext("/api/", new ApiHandler(config, AUTH, new TradeBoard(), new DiscordLinks()));
 			server.createContext("/", new StaticHandler());
 			server.setExecutor(executor);
 			server.start();

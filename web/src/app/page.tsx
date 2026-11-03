@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ShoppingCart, LogIn, LogOut, CheckCircle2, XCircle, Search, Sparkles, Coins, RefreshCw, SlidersHorizontal, MessageSquare, Store, Trash2, Archive, Package, PackageOpen } from 'lucide-react';
+import { ShoppingCart, LogIn, LogOut, CheckCircle2, XCircle, Search, Sparkles, Coins, RefreshCw, SlidersHorizontal, MessageSquare, Store, Trash2, Archive, Package, PackageOpen, MessageCircle } from 'lucide-react';
 
 // Helper for splitting known Cobblemon string IDs into nicely formatted words
 const knownSuffixes = [
@@ -77,6 +77,13 @@ const spriteUrl = (spriteName: string, shiny: boolean) =>
 
 const FALLBACK_SPRITE = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png';
 
+// Result of the Discord login or link, passed back as /?discord=...
+const DISCORD_RESULTS: Record<string, string> = {
+  linked: 'Discord propojen! Příště se můžeš přihlásit přes Discord.',
+  not_linked: 'Tento Discord účet není propojený. Přihlas se kódem z /gts web a v horní liště ho propoj.',
+  error: 'Přihlášení přes Discord se nezdařilo, zkus to znovu.',
+};
+
 // Error codes returned by the mod's web API.
 const ERROR_TEXTS: Record<string, string> = {
   INVALID_CODE: 'Neplatný nebo prošlý kód. Napiš ve hře /gts web pro nový.',
@@ -115,6 +122,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [listings, setListings] = useState<any[]>([]);
   const [loginCode, setLoginCode] = useState('');
+  const [discordEnabled, setDiscordEnabled] = useState(false);
+  const [discordLink, setDiscordLink] = useState<{ linked: boolean; name?: string } | null>(null);
   const [error, setError] = useState('');
   const [buyMessage, setBuyMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -144,6 +153,26 @@ export default function Home() {
     // Login link from the in-game /gts web command: /?code=XXXX
     const params = new URLSearchParams(window.location.search);
     const codeFromUrl = params.get('code');
+
+    // Result of logging in or linking with Discord: /?discord=...
+    const discordResult = params.get('discord');
+    if (discordResult) {
+      window.history.replaceState(null, '', window.location.pathname);
+      const message = DISCORD_RESULTS[discordResult];
+      if (message) {
+        // The URL is only known in the browser, after the static page has loaded.
+        /* eslint-disable react-hooks/set-state-in-effect */
+        if (discordResult === 'linked') {
+          setBuyMessage({ text: message, type: 'success' });
+        } else {
+          setError(message);
+          setBuyMessage({ text: message, type: 'error' });
+        }
+        /* eslint-enable react-hooks/set-state-in-effect */
+        setTimeout(() => setBuyMessage(null), 6000);
+      }
+    }
+
     if (codeFromUrl) {
       window.history.replaceState(null, '', window.location.pathname);
       loginWithCode(codeFromUrl);
@@ -246,8 +275,10 @@ export default function Home() {
     try {
       const res = await fetch('/api/auth/me');
       const data = await res.json();
+      setDiscordEnabled(!!data.discordEnabled);
       if (data.authenticated) {
         setUser(data.user);
+        setDiscordLink(data.discord || null);
       }
     } catch (e) {
       console.error('Failed to fetch user', e);
@@ -295,6 +326,20 @@ export default function Home() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     await loginWithCode(loginCode);
+  };
+
+  const handleDiscordUnlink = async () => {
+    if (!confirm('Opravdu chceš odpojit Discord? Pak se budeš přihlašovat jen kódem ze hry.')) return;
+    const res = await fetch('/api/auth/discord/unlink', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+    if (res.ok) {
+      setDiscordLink({ linked: false });
+      setBuyMessage({ text: 'Discord byl odpojen.', type: 'success' });
+      setTimeout(() => setBuyMessage(null), 3000);
+    }
   };
 
   const handleLogout = async () => {
@@ -412,27 +457,6 @@ export default function Home() {
     }
   };
 
-  const handleExtendTrade = async (tradeId: string) => {
-    try {
-      const res = await fetch('/api/trades', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: tradeId })
-      });
-      if (res.ok) {
-        fetchTrades();
-        setBuyMessage({ text: 'Inzerát prodloužen o dalších 72 hodin!', type: 'success' });
-        setTimeout(() => setBuyMessage(null), 3000);
-      } else {
-        const data = await res.json();
-        setBuyMessage({ text: errorText(data.error, 'Chyba při prodlužování.'), type: 'error' });
-        setTimeout(() => setBuyMessage(null), 3000);
-      }
-    } catch(err) {
-      console.error(err);
-    }
-  };
-
   if (loading) {
     return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Načítám...</div>;
   }
@@ -476,6 +500,22 @@ export default function Home() {
               Přihlásit se
             </button>
           </form>
+
+          {discordEnabled && (
+            <div className="mt-6">
+              <div className="flex items-center gap-3 mb-5 text-slate-500 text-sm">
+                <div className="flex-1 h-px bg-white/10"></div>nebo<div className="flex-1 h-px bg-white/10"></div>
+              </div>
+              <a
+                href="/api/auth/discord/login"
+                className="w-full bg-[#5865F2] hover:bg-[#4752c4] text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2"
+              >
+                <MessageCircle className="w-5 h-5" />
+                Přihlásit přes Discord
+              </a>
+              <p className="text-slate-500 text-sm text-center mt-3">Funguje po propojení: přihlas se jednou kódem a v horní liště klikni na „Propojit Discord“.</p>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -528,6 +568,20 @@ export default function Home() {
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
             Přihlášen jako <span className="text-white font-bold">{user.realname}</span>
           </div>
+          {discordEnabled && (discordLink?.linked ? (
+            <div className="hidden md:flex items-center gap-2 text-sm text-slate-400">
+              <MessageCircle className="w-4 h-4 text-[#5865F2]" />
+              <span className="text-slate-300">{discordLink.name}</span>
+              <button onClick={handleDiscordUnlink} className="hover:text-white underline-offset-2 hover:underline">Odpojit</button>
+            </div>
+          ) : (
+            <a
+              href="/api/auth/discord/link"
+              className="flex items-center gap-2 text-sm font-semibold text-white bg-[#5865F2] hover:bg-[#4752c4] px-3 py-2 rounded-lg transition-colors"
+            >
+              <MessageCircle className="w-4 h-4" /> Propojit Discord
+            </a>
+          ))}
           <button
             onClick={handleLogout}
             className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-base font-semibold hover:bg-white/5 px-3 py-2 rounded-lg"
@@ -914,7 +968,7 @@ export default function Home() {
             <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
               <div>
                 <h2 className="text-4xl font-bold text-white mb-2">Nástěnka Inzerátů</h2>
-                <p className="text-slate-400">Co ostatní hráči shánějí nebo nabízejí k výměně. <span className="text-slate-500 text-sm ml-2">(Inzeráty se mažou automaticky po 72 hodinách)</span></p>
+                <p className="text-slate-400">Co ostatní hráči shánějí nebo nabízejí k výměně.</p>
               </div>
               <button 
                 onClick={() => setShowTradeForm(!showTradeForm)}
@@ -1047,13 +1101,6 @@ export default function Home() {
                             <div className="flex gap-2">
                               {isAuthor && (
                                 <>
-                                  <button 
-                                    onClick={() => handleExtendTrade(trade.id)}
-                                    className="text-xs font-bold bg-blue-900/50 hover:bg-blue-600 text-blue-300 hover:text-white px-2 py-1.5 rounded-lg border border-blue-500/30 transition-colors flex items-center justify-center"
-                                    title="Prodloužit inzerát o 72 hodin"
-                                  >
-                                    <RefreshCw className="w-3.5 h-3.5" />
-                                  </button>
                                   <button 
                                     onClick={() => handleDeleteTrade(trade.id)}
                                     className="text-xs font-bold bg-red-900/50 hover:bg-red-600 text-red-300 hover:text-white px-2 py-1.5 rounded-lg border border-red-500/30 transition-colors flex items-center justify-center"

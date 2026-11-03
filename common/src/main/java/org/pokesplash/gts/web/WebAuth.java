@@ -23,8 +23,49 @@ public class WebAuth {
 
 	private record PendingLogin(UUID uuid, String name, long expiresAt) {}
 
+	public enum OAuthMode { LOGIN, LINK }
+
+	/**
+	 * A Discord authorization in progress. For LINK, the account that is being linked.
+	 */
+	public record OAuthState(OAuthMode mode, UUID uuid, String name, long expiresAt) {}
+
+	public static final String OAUTH_COOKIE = "gts_oauth";
+	public static final int OAUTH_STATE_MINUTES = 10;
+	private static final int MAX_OAUTH_STATES = 10_000;
+
 	private final SecureRandom random = new SecureRandom();
 	private final Map<String, PendingLogin> codes = new ConcurrentHashMap<>();
+	private final Map<String, OAuthState> oauthStates = new ConcurrentHashMap<>();
+
+	/**
+	 * Starts a Discord authorization.
+	 * @return The random state to pass through Discord, or null if too many are pending.
+	 */
+	public String createOAuthState(OAuthMode mode, UUID uuid, String name) {
+		long now = System.currentTimeMillis();
+		oauthStates.values().removeIf(state -> state.expiresAt() < now);
+		if (oauthStates.size() >= MAX_OAUTH_STATES) {
+			return null;
+		}
+		byte[] bytes = new byte[24];
+		random.nextBytes(bytes);
+		String state = base64(bytes);
+		oauthStates.put(state, new OAuthState(mode, uuid, name, now + OAUTH_STATE_MINUTES * 60_000L));
+		return state;
+	}
+
+	/**
+	 * Uses up a Discord authorization state.
+	 * @return The state, or null if it is unknown or expired.
+	 */
+	public OAuthState consumeOAuthState(String state) {
+		if (state == null) {
+			return null;
+		}
+		OAuthState oauth = oauthStates.remove(state);
+		return oauth == null || oauth.expiresAt() < System.currentTimeMillis() ? null : oauth;
+	}
 
 	/**
 	 * Creates a one-time login code for a player, replacing any older code of theirs.
