@@ -45,6 +45,11 @@ public class ConfigManager {
                          }
                     }
 
+                    // Older configs don't have the icon options yet, write them so they are visible.
+                    if (!json.has("usePackIcons") || !json.has("packIconItem")) {
+                        requiresWrite.set(true);
+                    }
+
                     try {
                         config.set(gson.fromJson(json, Config.class));
                     } catch (Exception e) {

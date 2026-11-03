@@ -8,7 +8,6 @@ import ca.landonjw.gooeylibs2.api.helpers.PaginationHelper;
 import ca.landonjw.gooeylibs2.api.page.LinkedPage;
 import ca.landonjw.gooeylibs2.api.page.Page;
 import ca.landonjw.gooeylibs2.api.template.types.ChestTemplate;
-import com.cobblemon.mod.common.item.PokemonItem;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -90,7 +89,7 @@ public class PokemonListings {
 			lore.addAll(PokemonInfo.parse(listing));
 
 			Button button = GooeyButton.builder()
-					.display(PokemonItem.from(listing.getListing(), 1))
+					.display(listing.getIcon())
 					.with(DataComponents.CUSTOM_NAME, listing.getDisplayName())
 					.with(DataComponents.LORE, new ItemLore(lore))
 					.onClick((action) -> {

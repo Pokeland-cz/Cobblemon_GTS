@@ -7,7 +7,7 @@ import ca.landonjw.gooeylibs2.api.helpers.PaginationHelper;
 import ca.landonjw.gooeylibs2.api.page.LinkedPage;
 import ca.landonjw.gooeylibs2.api.page.Page;
 import ca.landonjw.gooeylibs2.api.template.types.ChestTemplate;
-import com.cobblemon.mod.common.item.PokemonItem;
+import org.pokesplash.gts.util.PokemonIcon;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Unit;
@@ -72,7 +72,7 @@ public class History {
 					lore.addAll(PokemonInfo.parse(pokemonItem.getListing()));
 
 					button = GooeyButton.builder()
-							.display(PokemonItem.from(pokemonItem.getListing(), 1))
+							.display(PokemonIcon.of(pokemonItem.getListing()))
 							.with(DataComponents.CUSTOM_NAME, pokemonItem.getDisplayName())
 							.with(DataComponents.LORE, new ItemLore(lore))
 							.build();
