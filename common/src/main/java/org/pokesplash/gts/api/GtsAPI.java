@@ -3,6 +3,7 @@ package org.pokesplash.gts.api;
 import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.api.storage.party.PartyPosition;
 import com.cobblemon.mod.common.api.storage.party.PlayerPartyStore;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import org.pokesplash.gts.Gts;
 import org.pokesplash.gts.Listing.ItemListing;
@@ -16,6 +17,7 @@ import org.pokesplash.gts.api.event.events.PurchaseEvent;
 import org.pokesplash.gts.api.event.events.ReturnEvent;
 import org.pokesplash.gts.api.provider.ListingAPI;
 import org.pokesplash.gts.discord.Webhook;
+import org.pokesplash.gts.util.ColorUtil;
 import org.pokesplash.gts.util.Utils;
 
 import java.util.UUID;
@@ -150,6 +152,79 @@ public abstract class GtsAPI {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Outcome of {@link #purchase(ServerPlayer, Listing)}.
+	 */
+	public enum PurchaseResult {
+		SUCCESS,
+		NOT_AVAILABLE,
+		OWN_LISTING,
+		NO_INVENTORY_SPACE,
+		INSUFFICIENT_FUNDS,
+		FAILED
+	}
+
+	/**
+	 * Checks and performs a purchase, messaging the buyer (and the seller if online).
+	 * Must be called on the server thread.
+	 * @param buyer The player buying the listing.
+	 * @param listing The listing to buy.
+	 * @return The outcome of the purchase.
+	 */
+	public static PurchaseResult purchase(ServerPlayer buyer, Listing listing) {
+		String buyerName = buyer.getName().getString();
+
+		// Checks that the listing still exists.
+		if (Gts.listings.getActiveListingById(listing.getId()) == null) {
+			buyer.sendSystemMessage(Component.literal("§cThis listing is no longer available."));
+			return PurchaseResult.NOT_AVAILABLE;
+		}
+
+		if (buyer.getUUID().equals(listing.getSellerUuid())) {
+			return PurchaseResult.OWN_LISTING;
+		}
+
+		// Checks the player has inventory space for the item.
+		if (!listing.isPokemon()) {
+			ItemListing itemListing = (ItemListing) listing;
+			if (!Utils.hasSpace(buyer, itemListing.getListing())) {
+				buyer.sendSystemMessage(ColorUtil.parse(Utils.formatPlaceholders(
+						Gts.language.getInsufficientInventorySpace(),
+						0, listing.getListingName(), listing.getSellerName(), buyerName)));
+				return PurchaseResult.NO_INVENTORY_SPACE;
+			}
+		}
+
+		// Checks that the player can afford the listing.
+		if (!hasEnoughFunds(buyer.getUUID(), listing.getPrice())) {
+			buyer.sendSystemMessage(ColorUtil.parse(Utils.formatPlaceholders(
+					Gts.language.getInsufficientFunds(),
+					0, listing.getListingName(), listing.getSellerName(), buyerName)));
+			return PurchaseResult.INSUFFICIENT_FUNDS;
+		}
+
+		try {
+			sale(listing.getSellerUuid(), buyer, listing);
+		} catch (Exception e) {
+			buyer.sendSystemMessage(Component.literal("§c" + e.getMessage()));
+			return PurchaseResult.FAILED;
+		}
+
+		buyer.sendSystemMessage(ColorUtil.parse(Utils.formatPlaceholders(
+				Gts.language.getPurchaseMessageBuyer(),
+				0, listing.getListingName(), listing.getSellerName(), buyerName)));
+
+		// If the seller is online and not the buyer, notify them.
+		ServerPlayer seller = buyer.getServer().getPlayerList().getPlayer(listing.getSellerUuid());
+		if (seller != null && !seller.getUUID().equals(buyer.getUUID())) {
+			seller.sendSystemMessage(ColorUtil.parse(Utils.formatPlaceholders(
+					Gts.language.getListingBought(),
+					0, listing.getListingName(), listing.getSellerName(), buyerName)));
+		}
+
+		return PurchaseResult.SUCCESS;
 	}
 
 	/**

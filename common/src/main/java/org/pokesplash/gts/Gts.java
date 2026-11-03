@@ -14,6 +14,7 @@ import org.pokesplash.gts.moderation.TimeoutProvider;
 import org.pokesplash.gts.permission.PermissionProvider;
 import org.pokesplash.gts.util.CommandsRegistry;
 import org.pokesplash.gts.util.GtsLogger;
+import org.pokesplash.gts.web.GtsWeb;
 
 public class Gts
 {
@@ -45,6 +46,28 @@ public class Gts
 	public static void reload() {
 		reloadNonSensitive();
 		reloadSensitive();
+		if (server != null) {
+			startWeb(); // Restarts the website with the reloaded config/gts/web.json.
+		}
+	}
+
+	/**
+	 * Starts the built-in website if enabled in config/gts/web.json.
+	 */
+	public static void startWeb() {
+		try {
+			GtsWeb.start();
+		} catch (LinkageError e) {
+			LOGGER.error("The GTS website needs the jdk.httpserver module, which this Java runtime lacks: " + e);
+		}
+	}
+
+	public static void stopWeb() {
+		try {
+			GtsWeb.stop();
+		} catch (LinkageError ignored) {
+			// The website never started.
+		}
 	}
 
 	public static void reloadNonSensitive() {

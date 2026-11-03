@@ -11,6 +11,30 @@ A Global Trading System mod for [Cobblemon](https://cobblemon.com/) that allows 
 - Item Blacklist
 - Moderation
 
+- Optional website for browsing, buying and cancelling Pokemon listings and a WTB/WTS trade board
+
+## Website
+
+GTS can serve a website from the Minecraft server itself. Enable it in `config/gts/web.json`:
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `enabled` | `false` | Starts the web server. |
+| `bindAddress` / `port` | `0.0.0.0` / `8080` | Where the web server listens. |
+| `publicUrl` | `""` | URL players open, used in the `/gts web` link. Defaults to `http://localhost:<port>`. |
+| `secureCookies` | `false` | Set to `true` when the site is served over HTTPS. |
+| `trustProxyHeaders` | `false` | Use `X-Forwarded-For` for rate limiting. Only enable behind a reverse proxy. |
+| `threads` | `4` | Worker threads for web requests. |
+| `sessionHours` / `loginCodeMinutes` | `24` / `5` | How long a web login and a login code stay valid. |
+
+Players log in with `/gts web` (permission `gts.user.web`), which gives a one-time link and code.
+Buying from the website requires the player to be online in game. Listings cancelled on the website move to
+the seller's expired listings, which can be collected on the website (player online) or with `/gts expired`.
+`/gts reload` restarts the website.
+For HTTPS, put a reverse proxy (nginx, Caddy) in front and set `secureCookies` and `trustProxyHeaders`.
+
+Data of the trade board is stored in `config/gts/web/data/`.
+Files in `config/gts/web/site/` override the website bundled in the jar.
 
 ## Installation
 

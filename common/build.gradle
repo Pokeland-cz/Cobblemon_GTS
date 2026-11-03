@@ -34,3 +34,60 @@ publishing {
         // Add repositories to publish to here.
     }
 }
+
+// The website in web/ is exported by Next.js as static files and bundled into the jar under gts_web/.
+// Needs Node.js (npm) on PATH; without it, or with -PskipWeb, the jar keeps the last web/out build (if any).
+def webDir = rootProject.file("web")
+def windows = System.getProperty("os.name").toLowerCase().contains("windows")
+def npmPath = null
+def shouldBuildWeb = { ->
+    if (npmPath == null) {
+        npmPath = ""
+        if (!project.hasProperty("skipWeb")) {
+            def found = System.getenv("PATH")?.split(File.pathSeparator)?.collect { new File(it, windows ? "npm.cmd" : "npm") }
+                    ?.find { it.isFile() }
+            if (found != null) {
+                npmPath = found.absolutePath
+            } else {
+                logger.warn("npm was not found on PATH, the GTS website is not rebuilt. Install Node.js or pass -PskipWeb.")
+            }
+        }
+    }
+    return !npmPath.isEmpty()
+}
+
+tasks.register("npmInstall", Exec) {
+    onlyIf { shouldBuildWeb() }
+    workingDir webDir
+    args "ci", "--no-audit", "--no-fund"
+    doFirst {
+        executable npmPath
+        // npm runs on node, which sits next to it.
+        environment "PATH", new File(npmPath).parent + File.pathSeparator + System.getenv("PATH")
+    }
+    inputs.file(new File(webDir, "package-lock.json"))
+    outputs.file(new File(webDir, "node_modules/.package-lock.json"))
+}
+
+tasks.register("buildWeb", Exec) {
+    onlyIf { shouldBuildWeb() }
+    dependsOn "npmInstall"
+    workingDir webDir
+    args "run", "build"
+    doFirst {
+        executable npmPath
+        // npm runs on node, which sits next to it.
+        environment "PATH", new File(npmPath).parent + File.pathSeparator + System.getenv("PATH")
+    }
+    inputs.dir(new File(webDir, "src"))
+    inputs.files(["package.json", "package-lock.json", "next.config.ts", "postcss.config.mjs", "tsconfig.json"]
+            .collect { new File(webDir, it) })
+    outputs.dir(new File(webDir, "out"))
+}
+
+processResources {
+    dependsOn "buildWeb"
+    from(new File(webDir, "out")) {
+        into "gts_web"
+    }
+}
