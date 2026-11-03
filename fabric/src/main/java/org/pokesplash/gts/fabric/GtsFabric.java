@@ -1,6 +1,7 @@
 package org.pokesplash.gts.fabric;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
@@ -11,6 +12,9 @@ import org.pokesplash.gts.util.CommandsRegistry;
 public class GtsFabric implements ModInitializer {
     @Override
     public void onInitialize() {
+        Gts.version = FabricLoader.getInstance().getModContainer(Gts.MOD_ID)
+                .map(c -> c.getMetadata().getVersion().getFriendlyString())
+                .orElse("unknown");
         CommandRegistrationCallback.EVENT.register(CommandsRegistry::registerCommands); // Registers Commands
         ServerWorldEvents.LOAD.register((t, e) -> {
             Gts.server = t;

@@ -1,6 +1,7 @@
 package org.pokesplash.gts.forge;
 
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
@@ -13,7 +14,8 @@ import org.pokesplash.gts.util.CommandsRegistry;
 
 @Mod(Gts.MOD_ID)
 public class GtsForge {
-    public GtsForge() {
+    public GtsForge(ModContainer container) {
+        Gts.version = container.getModInfo().getVersion().toString();
         Gts.init();
         NeoForge.EVENT_BUS.register(this);
     }

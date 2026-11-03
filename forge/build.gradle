@@ -1,5 +1,5 @@
 plugins {
-    id "com.github.johnrengelman.shadow" version "7.1.2"
+    id "com.gradleup.shadow" version "8.3.9"
 }
 architectury {
     platformSetupLoomIde()
@@ -17,17 +17,18 @@ configurations {
 dependencies {
     neoForge "net.neoforged:neoforge:${rootProject.neoforge_version}"
 
-    common(project(path: ":common", configuration: "namedElements")) { transitive false }
+    common(project(path: ":common", configuration: "namedElements")) { transitive = false }
     shadowCommon(project(path: ":common", configuration: "transformProductionNeoForge")) { transitive = false }
 
     implementation(include("ca.landonjw.gooeylibs:neoforge:${rootProject.gooeylibs_version}"))
 }
 
 processResources {
-    inputs.property "version", project.version
+    def modVersion = project.version
+    inputs.property "version", modVersion
 
     filesMatching("META-INF/neoforge.mods.toml") {
-        expand "version": project.version
+        expand "version": modVersion
     }
 }
 
