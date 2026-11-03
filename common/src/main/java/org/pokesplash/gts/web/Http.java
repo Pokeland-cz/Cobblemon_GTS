@@ -10,7 +10,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -46,6 +48,33 @@ final class Http {
 	static void json(HttpExchange exchange, int status, Object body) throws IOException {
 		exchange.getResponseHeaders().set("Cache-Control", "no-store");
 		send(exchange, status, "application/json; charset=utf-8", GSON.toJson(body).getBytes(StandardCharsets.UTF_8));
+	}
+
+	/**
+	 * Sends a 302 redirect, e.g. to Discord or back to the website.
+	 */
+	static void redirect(HttpExchange exchange, String location) throws IOException {
+		exchange.getResponseHeaders().set("Location", location);
+		exchange.getResponseHeaders().set("Cache-Control", "no-store");
+		send(exchange, 302, null, new byte[0]);
+	}
+
+	/**
+	 * @return The URL query parameters (first value of each).
+	 */
+	static Map<String, String> query(HttpExchange exchange) {
+		Map<String, String> params = new HashMap<>();
+		String query = exchange.getRequestURI().getRawQuery();
+		if (query == null) {
+			return params;
+		}
+		for (String pair : query.split("&")) {
+			int eq = pair.indexOf('=');
+			String key = URLDecoder.decode(eq < 0 ? pair : pair.substring(0, eq), StandardCharsets.UTF_8);
+			String value = eq < 0 ? "" : URLDecoder.decode(pair.substring(eq + 1), StandardCharsets.UTF_8);
+			params.putIfAbsent(key, value);
+		}
+		return params;
 	}
 
 	static void error(HttpExchange exchange, int status, String code) throws IOException {

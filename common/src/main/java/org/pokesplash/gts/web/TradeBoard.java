@@ -1,14 +1,7 @@
 package org.pokesplash.gts.web;
 
-import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import org.pokesplash.gts.Gts;
-import org.pokesplash.gts.util.Utils;
 
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -21,8 +14,6 @@ import java.util.UUID;
  * Stored as JSON in config/gts/web/data, compatible with the files of the old standalone website.
  */
 public class TradeBoard {
-	public static final Path DATA_DIR = Path.of("config", "gts", "web", "data");
-	private static final long TRADE_LIFETIME = 72L * 60 * 60 * 1000;
 	private static final int MAX_TRADES = 200;
 	private static final int MAX_HISTORY = 20;
 	public static final int MAX_POKEMON_LENGTH = 64;
@@ -53,16 +44,15 @@ public class TradeBoard {
 		long count;
 	}
 
-	private final Gson gson = Utils.newGson();
 	private List<Trade> trades;
 	private Map<String, List<HistoryEntry>> history;
 	private long visits;
 
 	public TradeBoard() {
-		trades = read("trades.json", new TypeToken<List<Trade>>() {}, new ArrayList<>());
-		history = read("trade_history.json", new TypeToken<LinkedHashMap<String, List<HistoryEntry>>>() {},
+		trades = JsonFiles.read("trades.json", new TypeToken<List<Trade>>() {}, new ArrayList<>());
+		history = JsonFiles.read("trade_history.json", new TypeToken<LinkedHashMap<String, List<HistoryEntry>>>() {},
 				new LinkedHashMap<>());
-		visits = read("counter.json", new TypeToken<Counter>() {}, new Counter()).count;
+		visits = JsonFiles.read("counter.json", new TypeToken<Counter>() {}, new Counter()).count;
 	}
 
 	public static boolean isValidType(String type) {
@@ -70,13 +60,10 @@ public class TradeBoard {
 	}
 
 	/**
-	 * @return Trades younger than 72 hours, newest first.
+	 * @return All trades, newest first. They stay until their author deletes them
+	 * or they are pushed out by the 200 newest.
 	 */
 	public synchronized List<Trade> getTrades() {
-		long now = System.currentTimeMillis();
-		if (trades.removeIf(t -> now - t.timestamp >= TRADE_LIFETIME)) {
-			write("trades.json", trades);
-		}
 		return new ArrayList<>(trades);
 	}
 
@@ -93,7 +80,7 @@ public class TradeBoard {
 		while (trades.size() > MAX_TRADES) {
 			trades.remove(trades.size() - 1);
 		}
-		write("trades.json", trades);
+		JsonFiles.write("trades.json", trades);
 		return trade;
 	}
 
@@ -103,24 +90,9 @@ public class TradeBoard {
 	public synchronized boolean deleteTrade(String id, String author) {
 		boolean removed = trades.removeIf(t -> id.equals(t.id) && author.equals(t.author));
 		if (removed) {
-			write("trades.json", trades);
+			JsonFiles.write("trades.json", trades);
 		}
 		return removed;
-	}
-
-	/**
-	 * Restarts the 72 hour lifetime of the author's trade.
-	 * @return The new timestamp, or null if the trade doesn't exist.
-	 */
-	public synchronized Long extendTrade(String id, String author) {
-		for (Trade trade : trades) {
-			if (id.equals(trade.id) && author.equals(trade.author)) {
-				trade.timestamp = System.currentTimeMillis();
-				write("trades.json", trades);
-				return trade.timestamp;
-			}
-		}
-		return null;
 	}
 
 	public synchronized List<HistoryEntry> getHistory(String author) {
@@ -141,7 +113,7 @@ public class TradeBoard {
 			}
 		}
 		history.put(author, entries);
-		write("trade_history.json", history);
+		JsonFiles.write("trade_history.json", history);
 		return new ArrayList<>(entries);
 	}
 
@@ -153,33 +125,7 @@ public class TradeBoard {
 		visits++;
 		Counter counter = new Counter();
 		counter.count = visits;
-		write("counter.json", counter);
+		JsonFiles.write("counter.json", counter);
 		return visits;
-	}
-
-	private <T> T read(String file, TypeToken<T> type, T fallback) {
-		Path path = DATA_DIR.resolve(file);
-		if (!Files.exists(path)) {
-			return fallback;
-		}
-		try {
-			T value = gson.fromJson(Files.readString(path, StandardCharsets.UTF_8), type.getType());
-			return value == null ? fallback : value;
-		} catch (Exception e) {
-			Gts.LOGGER.error("Could not read " + path + ": " + e.getMessage());
-			return fallback;
-		}
-	}
-
-	private void write(String file, Object data) {
-		try {
-			Files.createDirectories(DATA_DIR);
-			Path target = DATA_DIR.resolve(file);
-			Path temp = DATA_DIR.resolve(file + ".tmp");
-			Files.writeString(temp, gson.toJson(data), StandardCharsets.UTF_8);
-			Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-		} catch (Exception e) {
-			Gts.LOGGER.error("Could not write " + file + " of the GTS website: " + e.getMessage());
-		}
 	}
 }

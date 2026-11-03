@@ -1,9 +1,10 @@
 package org.pokesplash.gts.web;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.pokesplash.gts.Gts;
-import org.pokesplash.gts.util.Utils;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -16,6 +17,8 @@ import java.util.Base64;
  */
 public class WebConfig {
 	public static final Path FILE = Path.of("config", "gts", "web.json");
+	// No HTML escaping, so messages with & color codes stay readable in the file.
+	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
 	private boolean enabled = false; // Starts the web server.
 	private String bindAddress = "0.0.0.0"; // Address the web server listens on.
@@ -24,9 +27,11 @@ public class WebConfig {
 	private boolean secureCookies = false; // Set to true when the site is served over HTTPS (reverse proxy).
 	private boolean trustProxyHeaders = false; // Use X-Forwarded-For for rate limiting (only behind a reverse proxy).
 	private int threads = 4; // Worker threads handling web requests.
-	private int sessionHours = 24; // How long a web login stays valid.
+	private int sessionHours = 168; // A web login expires after this many hours without visiting the website.
 	private int loginCodeMinutes = 5; // How long a /gts web code stays valid.
 	private String sessionSecret = ""; // Signs login sessions. Generated on first start, keep it private.
+	private String discordClientId = ""; // Discord application for "Log in with Discord". Empty = disabled.
+	private String discordClientSecret = ""; // Keep it private.
 	private String loginLinkMessage = "&3GTS web: &b&n{url}"; // Clickable chat message, {url} = login link.
 	private String loginCodeMessage = "&7Or enter code &f{code} &7on the website (valid {minutes} min)."; // {code}, {minutes}
 	private String disabledMessage = "&cThe GTS website is disabled.";
@@ -43,9 +48,9 @@ public class WebConfig {
 			try {
 				String data = Files.readString(FILE, StandardCharsets.UTF_8);
 				JsonObject json = JsonParser.parseString(data).getAsJsonObject();
-				config = Utils.newGson().fromJson(json, WebConfig.class);
+				config = GSON.fromJson(json, WebConfig.class);
 				// Write back so options added in newer versions show up in the file.
-				write = !json.keySet().containsAll(Utils.newGson().toJsonTree(new WebConfig()).getAsJsonObject().keySet());
+				write = !json.keySet().containsAll(GSON.toJsonTree(new WebConfig()).getAsJsonObject().keySet());
 			} catch (Exception e) {
 				Gts.LOGGER.error("Could not read " + FILE + ", the GTS website stays disabled: " + e.getMessage());
 				return new WebConfig();
@@ -62,7 +67,7 @@ public class WebConfig {
 		if (write) {
 			try {
 				Files.createDirectories(FILE.getParent());
-				Files.writeString(FILE, Utils.newGson().toJson(config), StandardCharsets.UTF_8);
+				Files.writeString(FILE, GSON.toJson(config), StandardCharsets.UTF_8);
 			} catch (Exception e) {
 				Gts.LOGGER.error("Could not write " + FILE + ": " + e.getMessage());
 			}
@@ -110,6 +115,26 @@ public class WebConfig {
 
 	public int getLoginCodeMinutes() {
 		return Math.max(1, loginCodeMinutes);
+	}
+
+	public boolean isDiscordEnabled() {
+		return discordClientId != null && !discordClientId.isBlank()
+				&& discordClientSecret != null && !discordClientSecret.isBlank();
+	}
+
+	public String getDiscordClientId() {
+		return discordClientId.trim();
+	}
+
+	public String getDiscordClientSecret() {
+		return discordClientSecret.trim();
+	}
+
+	/**
+	 * @return The OAuth2 redirect URL to register in the Discord Developer Portal.
+	 */
+	public String getDiscordRedirectUri() {
+		return getPublicUrl() + "/api/auth/discord/callback";
 	}
 
 	public byte[] getSessionSecret() {
