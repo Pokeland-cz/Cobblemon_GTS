@@ -1,6 +1,6 @@
 package org.pokesplash.gts.Listing;
 
-import com.cobblemon.mod.common.item.PokemonItem;
+import org.pokesplash.gts.util.PokemonIcon;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.google.gson.JsonElement;
 import com.mojang.serialization.JsonOps;
@@ -91,7 +91,7 @@ public class PokemonListing extends Listing<Pokemon> {
 
 	@Override
 	public ItemStack getIcon() {
-		return PokemonItem.from(getListing(), 1);
+		return PokemonIcon.of(getListing());
 	}
 
 	@Override

@@ -49,6 +49,8 @@ public class Config {
 	private List<PokemonAspects> bannedPokemon; // A list of pokemon that can not be sold.
     private List<String> removedModDescriptions;
 	private List<String> bannedModNamespaces = Arrays.asList("sophisticatedbackpacks"); // A list of complete banned mods
+	private boolean usePackIcons; // Show species icons from a resource pack instead of Pokemon models.
+	private String packIconItem; // The item the resource pack overrides with custom_model_data = dex number.
 
 	/**
 	 * Constructor to create a default config file.
@@ -86,6 +88,8 @@ public class Config {
 		bannedModNamespaces = new ArrayList<>(Arrays.asList("sophisticatedbackpacks"));
         removedModDescriptions = new ArrayList<>();
         removedModDescriptions.add("simpletms");
+		usePackIcons = true;
+		packIconItem = "minecraft:gray_dye";
 	}
 
 	/**
@@ -218,6 +222,14 @@ public class Config {
 
 	public List<String> getBannedModNamespaces() {
 		return bannedModNamespaces;
+	}
+
+	public boolean isUsePackIcons() {
+		return usePackIcons;
+	}
+
+	public String getPackIconItem() {
+		return packIconItem == null || packIconItem.isBlank() ? "minecraft:gray_dye" : packIconItem;
 	}
 
 	public void setBannedModNamespaces(List<String> bannedModNamespaces) {
