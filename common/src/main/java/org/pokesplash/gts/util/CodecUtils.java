@@ -30,8 +30,18 @@ public abstract class CodecUtils {
             return ItemStack.CODEC.decode(Gts.server.registryAccess().createSerializationContext(JsonOps.INSTANCE),
                     json).getOrThrow().getFirst();
         } catch (Exception e) {
-            Gts.LOGGER.error("Could not decode item: " + json.getAsString());
+            Gts.LOGGER.error("Could not decode item: " + getJsonData(json));
             return null;
         }
+    }
+
+    private static String getJsonData(JsonElement json) {
+        if (json.isJsonArray()) return json.getAsJsonArray().toString();
+
+        if (json.isJsonObject()) return json.getAsJsonObject().toString();
+
+        if (json.isJsonPrimitive()) return json.getAsJsonPrimitive().toString();
+
+        return null;
     }
 }

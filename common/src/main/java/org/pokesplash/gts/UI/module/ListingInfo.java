@@ -74,7 +74,7 @@ public abstract class ListingInfo {
                             .getTooltipLines(Item.TooltipContext.EMPTY, null, TooltipFlag.NORMAL);
 
                     lore.addAll(itemTooltips.subList(1, itemTooltips.size()));
-                } catch (Exception e) {}
+                } catch (Exception ignored) {}
             }
         }
 
